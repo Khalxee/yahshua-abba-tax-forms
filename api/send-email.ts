@@ -153,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       </html>
     `;
 
-    // Send email using Resend API with verified domain
+    // Send email using Resend API (free tier restriction - sends to verified email only)
     const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -161,11 +161,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'YAHSHUA-ABBA Tax Forms <noreply@abba.works>',
-        to: ['support@abba.works'],
-        cc: formData.emailAddress ? [formData.emailAddress] : [],
-        subject: `📋 Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
-        html: emailHtml,
+        from: 'YAHSHUA-ABBA Tax Forms <onboarding@resend.dev>',
+        to: ['yahshua.babidabb@gmail.com'],
+        subject: `📋 FOR: support@abba.works - Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
+        html: emailHtml + `
+          <div style="background-color: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; margin: 20px 0;">
+            <h4 style="color: #0c4a6e; margin-top: 0;">📧 EMAIL FORWARDING REQUIRED</h4>
+            <p><strong>Please forward this email to: support@abba.works</strong></p>
+            <p><em>To enable direct delivery to support@abba.works, complete domain verification at <a href="https://resend.com/domains">resend.com/domains</a></em></p>
+          </div>
+        `,
+        reply_to: 'support@abba.works'
       }),
     });
 
@@ -179,9 +185,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({
       success: true,
-      message: '✅ Form submitted successfully! Email sent directly to support@abba.works with confirmation copy to you.',
+      message: '✅ Form submitted successfully! Email sent to yahshua.babidabb@gmail.com (please forward to support@abba.works)',
       emailId: emailResult.id,
       timestamp: new Date().toISOString(),
+      note: 'To send directly to support@abba.works, complete domain verification at resend.com/domains'
     });
 
   } catch (error: any) {
