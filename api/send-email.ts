@@ -153,7 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       </html>
     `;
 
-    // Send email using Resend API (free tier restriction - sends to verified email only)
+    // Send email with YAHSHUA Compliance branding to verified address
     const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -161,17 +161,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'YAHSHUA-ABBA Tax Forms <onboarding@resend.dev>',
-        to: ['yahshua.babidabb@gmail.com'],
-        subject: `📋 FOR: support@abba.works - Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
+        from: 'YAHSHUA Compliance <onboarding@resend.dev>',
+        to: ['yahshua.babidabb@gmail.com'], // Only verified address that works
+        subject: `📋 FORWARD TO: support@abba.works - Taxpayer Form - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
         html: emailHtml + `
-          <div style="background-color: #e0f2fe; border-left: 4px solid #0284c7; padding: 15px; margin: 20px 0;">
-            <h4 style="color: #0c4a6e; margin-top: 0;">📧 EMAIL FORWARDING REQUIRED</h4>
+          <div style="background-color: #dcfce7; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0;">
+            <h4 style="color: #15803d; margin-top: 0;">📧 ACTION: Forward to support@abba.works</h4>
             <p><strong>Please forward this email to: support@abba.works</strong></p>
-            <p><em>To enable direct delivery to support@abba.works, complete domain verification at <a href="https://resend.com/domains">resend.com/domains</a></em></p>
+            <p><strong>From YAHSHUA Compliance:</strong> yahshua.compliance@gmail.com</p>
+            <p><em>Reply-to is set to yahshua.compliance@gmail.com for direct responses</em></p>
           </div>
         `,
-        reply_to: 'support@abba.works'
+        reply_to: 'yahshua.compliance@gmail.com'
       }),
     });
 
@@ -185,10 +186,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({
       success: true,
-      message: '✅ Form submitted successfully! Email sent to yahshua.babidabb@gmail.com (please forward to support@abba.works)',
+      message: '✅ Form submitted successfully! Email sent from YAHSHUA Compliance - please forward to support@abba.works',
       emailId: emailResult.id,
       timestamp: new Date().toISOString(),
-      note: 'To send directly to support@abba.works, complete domain verification at resend.com/domains'
     });
 
   } catch (error: any) {
