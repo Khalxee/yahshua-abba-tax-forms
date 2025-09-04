@@ -153,8 +153,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       </html>
     `;
 
-    // Send email using Resend API
-    // Note: Free tier only allows sending to verified email address
+    // Send email using Resend API with verified domain
     const emailResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -162,16 +161,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'YAHSHUA-ABBA Tax Forms <onboarding@resend.dev>',
-        to: ['yahshua.babidabb@gmail.com'], // Using verified email for free tier
-        subject: `📋 Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'}) - FORWARD TO support@abba.works`,
-        html: emailHtml + `
-          <div style="background-color: #fef3c7; border: 1px solid #f59e0b; padding: 15px; margin: 20px 0; border-radius: 4px;">
-            <p><strong>📧 ACTION REQUIRED:</strong></p>
-            <p>Please forward this email to <strong>support@abba.works</strong></p>
-            <p><em>This limitation is due to Resend free tier restrictions. To send directly to support@abba.works, verify a custom domain in Resend.</em></p>
-          </div>
-        `,
+        from: 'YAHSHUA-ABBA Tax Forms <noreply@abba.works>',
+        to: ['support@abba.works'],
+        cc: formData.emailAddress ? [formData.emailAddress] : [],
+        subject: `📋 Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
+        html: emailHtml,
       }),
     });
 
@@ -185,10 +179,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.status(200).json({
       success: true,
-      message: '✅ Form submitted successfully! Email sent to yahshua.babidabb@gmail.com (please forward to support@abba.works)',
+      message: '✅ Form submitted successfully! Email sent directly to support@abba.works with confirmation copy to you.',
       emailId: emailResult.id,
       timestamp: new Date().toISOString(),
-      note: 'Free tier limitation: Verify domain in Resend to send directly to support@abba.works'
     });
 
   } catch (error: any) {
