@@ -153,48 +153,30 @@ export default function TaxpayerForm() {
     setIsSubmitting(true);
     
     try {
-      console.log("🔍 DEBUG: Starting form submission...");
+      console.log("🔍 DEBUG: Starting automated email submission...");
       
-      // Temporary solution: Create email with all form data
-      const emailBody = `YAHSHUA-ABBA TAXPAYER FORM SUBMISSION
-
-Taxpayer Information:
-- Name: ${formData.taxpayerName}
-- Email: ${formData.emailAddress}  
-- Tax ID: ${formData.taxIdentificationNumber}
-- Address: ${formData.registeredAddress}
-- Phone: ${formData.telFaxNo}
-
-Form Details:
-- BIR Form No: ${formData.birFormNo}
-- Revenue Period: ${formData.revenuePeriod}
-- Line of Business: ${formData.lineOfBusiness}
-- RDO Code: ${formData.rdoCode}
-- Trade Name: ${formData.tradeName}
-- Zip Code: ${formData.zipCode}
-
-Business Rating: ${formData.businessRating}
-Ownership Type: ${formData.ownershipType}
-Business in Good Standing: ${formData.businessInGood ? 'Yes' : 'No'}
-
-Signatures:
-- Taxpayer: ${formData.taxpayerSignature}
-- Authorized Rep: ${formData.authorizedRepSignature}
-- Date Accomplished: ${formData.dateAccomplished}
-
-Submitted: ${new Date().toLocaleString()}`;
-
-      const mailtoLink = `mailto:support@abba.works?subject=Taxpayer Form Submission - ${formData.taxpayerName}&body=${encodeURIComponent(emailBody)}`;
-      
-      console.log("📧 Opening email client with form data...");
-      window.open(mailtoLink, '_blank');
-
-      toast({
-        title: "📧 Email Client Opened",
-        description: "Please send the pre-filled email to submit your form. Working on automatic delivery!",
+      // Use Vercel function for automatic email sending
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
 
-      console.log("✅ Email client opened successfully!");
+      const result = await response.json();
+      console.log("🔍 DEBUG: Email API response:", result);
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to send email via API");
+      }
+
+      toast({
+        title: "✅ Form Submitted Successfully!",
+        description: result.message || "Your taxpayer form has been automatically emailed to support@abba.works.",
+      });
+
+      console.log("✅ Email sent automatically! ID:", result.emailId);
       
     } catch (error: any) {
       console.error('🔍 DEBUG: Submission error:', error);

@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/send-email.ts": {
+      "runtime": "@vercel/node@18.x"
+    }
+  },
+  "env": {
+    "RESEND_API_KEY": "@resend_api_key"
+  }
+}
