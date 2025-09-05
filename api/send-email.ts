@@ -8,7 +8,7 @@ interface FormData {
   taxIdentificationNumber: string;
   registeredAddress: string;
   telFaxNo: string;
-  birFormNo: string;
+  birFormNo?: string; // Made optional since we're removing it from PDF
   revenuePeriod: string;
   lineOfBusiness: string;
   rdoCode: string;
@@ -73,9 +73,8 @@ const generatePDF = (formData: FormData): Promise<Buffer> => {
         doc.moveDown(1);
       };
 
-      // Form Information Section
+      // Form Information Section (removed BIR Form Number)
       addSection('FORM INFORMATION', [
-        ['BIR Form Number', formData.birFormNo],
         ['Revenue Period', formData.revenuePeriod],
         ['Tax ID Number', formData.taxIdentificationNumber],
         ['RDO Code', formData.rdoCode],
@@ -105,6 +104,73 @@ const generatePDF = (formData: FormData): Promise<Buffer> => {
         ['Authorized Representative', formData.authorizedRepSignature],
         ['Date Accomplished', formData.dateAccomplished]
       ]);
+
+      // Add Compliance Items if present
+      if (formData.complianceItems && Object.keys(formData.complianceItems).length > 0) {
+        doc.fontSize(14)
+           .fillColor('#1e40af')
+           .text('COMPLIANCE ITEMS', { underline: true })
+           .moveDown(0.5);
+
+        Object.entries(formData.complianceItems).forEach(([key, value]) => {
+          doc.fontSize(10)
+             .fillColor('#000')
+             .text(`${key}:`, { continued: true, width: 200 })
+             .fillColor('#333')
+             .text(` ${value || 'N/A'}`)
+             .moveDown(0.3);
+        });
+        doc.moveDown(1);
+      }
+
+      // Add Revenue Declarations if present
+      if (formData.revenueDeclarations && Object.keys(formData.revenueDeclarations).length > 0) {
+        doc.fontSize(14)
+           .fillColor('#1e40af')
+           .text('REVENUE DECLARATIONS', { underline: true })
+           .moveDown(0.5);
+
+        Object.entries(formData.revenueDeclarations).forEach(([key, value]) => {
+          doc.fontSize(10)
+             .fillColor('#000')
+             .text(`${key}:`, { continued: true, width: 200 })
+             .fillColor('#333')
+             .text(` ${value || 'N/A'}`)
+             .moveDown(0.3);
+        });
+        doc.moveDown(1);
+      }
+
+      // Add any additional form data that might be present
+      const excludedFields = [
+        'taxpayerName', 'emailAddress', 'taxIdentificationNumber', 'registeredAddress', 
+        'telFaxNo', 'birFormNo', 'revenuePeriod', 'lineOfBusiness', 'rdoCode', 
+        'tradeName', 'zipCode', 'businessRating', 'ownershipType', 'businessInGood',
+        'taxpayerSignature', 'authorizedRepSignature', 'dateAccomplished',
+        'complianceItems', 'revenueDeclarations'
+      ];
+
+      const additionalFields = Object.entries(formData).filter(([key, value]) => 
+        !excludedFields.includes(key) && value !== undefined && value !== null && value !== ''
+      );
+
+      if (additionalFields.length > 0) {
+        doc.fontSize(14)
+           .fillColor('#1e40af')
+           .text('ADDITIONAL INFORMATION', { underline: true })
+           .moveDown(0.5);
+
+        additionalFields.forEach(([key, value]) => {
+          const displayKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          doc.fontSize(10)
+             .fillColor('#000')
+             .text(`${displayKey}:`, { continued: true, width: 200 })
+             .fillColor('#333')
+             .text(` ${value}`)
+             .moveDown(0.3);
+        });
+        doc.moveDown(1);
+      }
 
       // Footer
       doc.moveDown(2);
@@ -232,7 +298,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               <span class="info-label">Email:</span> ${formData.emailAddress}
             </div>
             <div class="info-item">
-              <span class="info-label">BIR Form:</span> ${formData.birFormNo || 'N/A'}
+              <span class="info-label">Line of Business:</span> ${formData.lineOfBusiness || 'N/A'}
             </div>
             
             <p style="margin-top: 20px;">
