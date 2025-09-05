@@ -24,13 +24,13 @@ interface FormData {
   revenueDeclarations?: Record<string, any>;
 }
 
-// Simple, reliable PDF generation using PDFKit
-const generateReliablePDF = (formData: FormData): Promise<Buffer> => {
+// Function to generate proper PDF using PDFKit
+const generatePDF = (formData: FormData): Promise<Buffer> => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ 
         size: 'A4', 
-        margin: 50,
+        margin: 40,
         info: {
           Title: 'YAHSHUA-ABBA Taxpayer Form',
           Author: 'YAHSHUA-ABBA Tax System',
@@ -44,114 +44,124 @@ const generateReliablePDF = (formData: FormData): Promise<Buffer> => {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', reject);
 
-      // Header
+      let currentY = 60;
+
+      // Title - Bold and centered
       doc.fontSize(18)
-         .fillColor('#1e40af')
+         .font('Helvetica-Bold')
+         .fillColor('#000')
          .text('YAHSHUA-ABBA TAXPAYER FORM', { align: 'center' });
       
-      doc.fontSize(12)
-         .fillColor('#666')
+      currentY += 30;
+      
+      doc.fontSize(10)
+         .font('Helvetica')
          .text(`Submission Date: ${new Date().toLocaleString()}`, { align: 'center' })
-         .text('OFFICIAL SUBMISSION DOCUMENT', { align: 'center' })
-         .moveDown(2);
+         .text('OFFICIAL SUBMISSION DOCUMENT', { align: 'center' });
+      
+      currentY += 40;
 
-      // Helper function to add a field (one column layout)
-      const addField = (label: string, value: string | boolean) => {
-        const displayValue = typeof value === 'boolean' ? (value ? 'YES' : 'NO') : (value || 'N/A');
-        
-        doc.fontSize(10)
-           .fillColor('#1e40af')
-           .text(label + ':', { continued: true, width: 150 })
-           .fillColor('#333')
-           .text(' ' + displayValue)
-           .moveDown(0.3);
-      };
-
-      // Helper function to add section header
-      const addSectionHeader = (title: string) => {
-        doc.moveDown(0.5);
+      // Helper function to add section with single column layout
+      const addSection = (title: string, fields: Array<[string, string]>) => {
+        // Section title - Bold
         doc.fontSize(12)
-           .fillColor('#1e40af')
-           .text(title, { underline: true })
-           .moveDown(0.5);
+           .font('Helvetica-Bold')
+           .fillColor('#000')
+           .text(title, 50, currentY);
+        
+        currentY += 20;
+        
+        // Draw section border
+        doc.rect(50, currentY - 5, 495, (fields.length * 20) + 10)
+           .stroke('#ccc');
+        
+        fields.forEach(([label, value]) => {
+          // Field background
+          doc.rect(55, currentY, 485, 18)
+             .fillColor('#f8f9fa')
+             .fill()
+             .stroke('#ddd');
+          
+          // Label (bold)
+          doc.fontSize(9)
+             .font('Helvetica-Bold')
+             .fillColor('#1e40af')
+             .text(`${label}:`, 60, currentY + 4, { width: 150 });
+          
+          // Value
+          doc.fontSize(9)
+             .font('Helvetica')
+             .fillColor('#000')
+             .text(value || 'N/A', 220, currentY + 4, { width: 310, ellipsis: false });
+          
+          currentY += 20;
+        });
+        
+        currentY += 15;
       };
 
-      // FORM INFORMATION SECTION
-      addSectionHeader('FORM INFORMATION');
-      addField('Revenue Period', formData.revenuePeriod);
-      addField('Tax ID Number', formData.taxIdentificationNumber);
-      addField('RDO Code', formData.rdoCode);
-      addField('Line of Business', formData.lineOfBusiness);
+      // Form Information Section (no BIR Form Number)
+      addSection('FORM INFORMATION', [
+        ['Revenue Period', formData.revenuePeriod],
+        ['Tax ID Number', formData.taxIdentificationNumber],
+        ['RDO Code', formData.rdoCode],
+        ['Line of Business', formData.lineOfBusiness]
+      ]);
 
-      // TAXPAYER INFORMATION SECTION  
-      addSectionHeader('TAXPAYER INFORMATION');
-      addField('Taxpayer Name', formData.taxpayerName);
-      addField('Trade Name', formData.tradeName);
-      addField('Email Address', formData.emailAddress);
-      addField('Phone/Fax Number', formData.telFaxNo);
-      addField('Registered Address', formData.registeredAddress);
-      addField('Zip Code', formData.zipCode);
+      // Taxpayer Information Section
+      addSection('TAXPAYER INFORMATION', [
+        ['Taxpayer Name', formData.taxpayerName],
+        ['Trade Name', formData.tradeName],
+        ['Email Address', formData.emailAddress],
+        ['Phone/Fax Number', formData.telFaxNo],
+        ['Registered Address', formData.registeredAddress],
+        ['Zip Code', formData.zipCode]
+      ]);
 
-      // BUSINESS INFORMATION SECTION
-      addSectionHeader('BUSINESS INFORMATION');
-      addField('Business Rating', formData.businessRating);
-      addField('Ownership Type', formData.ownershipType);
-      addField('Business in Good Standing', formData.businessInGood); // Will show YES or NO
+      // Business Information Section
+      addSection('BUSINESS INFORMATION', [
+        ['Business Rating', formData.businessRating],
+        ['Ownership Type', formData.ownershipType],
+        ['Business in Good Standing', formData.businessInGood ? 'YES' : 'NO'] // Fixed checkbox logic
+      ]);
 
-      // COMPLIANCE ITEMS SECTION (if present)
+      // Add Compliance Items if present
       if (formData.complianceItems && Object.keys(formData.complianceItems).length > 0) {
-        addSectionHeader('COMPLIANCE ITEMS');
-        Object.entries(formData.complianceItems).forEach(([key, value]) => {
-          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-          addField(label, typeof value === 'boolean' ? (value ? 'YES' : 'NO') : value);
-        });
+        const complianceFields = Object.entries(formData.complianceItems).map(([key, value]) => [
+          key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+          String(value)
+        ]);
+        addSection('COMPLIANCE ITEMS', complianceFields);
       }
 
-      // REVENUE DECLARATIONS SECTION (if present)
+      // Add Revenue Declarations if present
       if (formData.revenueDeclarations && Object.keys(formData.revenueDeclarations).length > 0) {
-        addSectionHeader('REVENUE DECLARATIONS');
-        Object.entries(formData.revenueDeclarations).forEach(([key, value]) => {
-          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-          addField(label, typeof value === 'boolean' ? (value ? 'YES' : 'NO') : value);
-        });
+        const revenueFields = Object.entries(formData.revenueDeclarations).map(([key, value]) => [
+          key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+          String(value)
+        ]);
+        addSection('REVENUE DECLARATIONS', revenueFields);
       }
 
-      // SIGNATURES & AUTHORIZATION SECTION
-      addSectionHeader('SIGNATURES & AUTHORIZATION');
-      addField('Taxpayer Signature', formData.taxpayerSignature);
-      addField('Authorized Representative', formData.authorizedRepSignature);
-      addField('Date Accomplished', formData.dateAccomplished);
-
-      // ADDITIONAL INFORMATION (catch any other fields)
-      const excludedFields = [
-        'taxpayerName', 'emailAddress', 'taxIdentificationNumber', 'registeredAddress', 
-        'telFaxNo', 'birFormNo', 'revenuePeriod', 'lineOfBusiness', 'rdoCode', 
-        'tradeName', 'zipCode', 'businessRating', 'ownershipType', 'businessInGood',
-        'taxpayerSignature', 'authorizedRepSignature', 'dateAccomplished',
-        'complianceItems', 'revenueDeclarations'
-      ];
-
-      const additionalFields = Object.entries(formData).filter(([key, value]) => 
-        !excludedFields.includes(key) && value !== undefined && value !== null && value !== ''
-      );
-
-      if (additionalFields.length > 0) {
-        addSectionHeader('ADDITIONAL INFORMATION');
-        additionalFields.forEach(([key, value]) => {
-          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-          addField(label, typeof value === 'boolean' ? (value ? 'YES' : 'NO') : value);
-        });
-      }
+      // Signatures & Authorization Section
+      addSection('SIGNATURES & AUTHORIZATION', [
+        ['Taxpayer Signature', formData.taxpayerSignature],
+        ['Authorized Representative', formData.authorizedRepSignature],
+        ['Date Accomplished', formData.dateAccomplished]
+      ]);
 
       // Footer
-      doc.moveDown(3);
+      currentY += 20;
       doc.fontSize(8)
+         .font('Helvetica')
          .fillColor('#666')
-         .text('================================================================================', { align: 'center' })
-         .moveDown(0.5)
-         .text('YAHSHUA-ABBA Tax Form System', { align: 'center' })
-         .text(`Document ID: ${Date.now()}`, { align: 'center' })
-         .text('This is an official digital submission to support@abba.works', { align: 'center' });
+         .text('================================================================================', 50, currentY, { align: 'center' });
+      
+      currentY += 15;
+      
+      doc.text('YAHSHUA-ABBA Tax Form System', 50, currentY, { align: 'center' })
+         .text(`Document ID: ${Date.now()}`, 50, currentY + 12, { align: 'center' })
+         .text('This is an official digital submission to support@abba.works', 50, currentY + 24, { align: 'center' });
 
       doc.end();
     } catch (error) {
@@ -197,9 +207,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    // Generate reliable PDF
-    console.log('Generating reliable PDF with single column layout...');
-    const pdfBuffer = await generateReliablePDF(formData);
+    // Generate proper PDF
+    console.log('Generating professional single-column PDF...');
+    const pdfBuffer = await generatePDF(formData);
     
     // Create professional email content
     const emailHtml = `
@@ -209,7 +219,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <meta charset="utf-8">
           <style>
             body { 
-              font-family: Arial, sans-serif; 
+              font-family: Tahoma, Arial, sans-serif; 
               line-height: 1.6; 
               color: #333; 
               max-width: 600px; 
@@ -224,11 +234,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               text-align: center; 
               margin-bottom: 30px; 
             }
+            .header h1 {
+              font-weight: bold;
+              margin: 0 0 10px 0;
+            }
             .content {
               background-color: #f8fafc;
               padding: 20px;
               border-radius: 8px;
               border-left: 4px solid #1e40af;
+            }
+            .content h3 {
+              font-weight: bold;
+              color: #1e40af;
             }
             .info-item {
               margin: 8px 0;
@@ -276,7 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             </div>
             
             <p style="margin-top: 20px;">
-              <strong>Complete form details are attached as a PDF document.</strong>
+              <strong>Complete form details are attached as a professional PDF document.</strong>
             </p>
             
             <p>This submission has been automatically processed and is ready for review.</p>
@@ -284,7 +302,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           <div class="footer">
             <p><strong>YAHSHUA-ABBA Tax Form System</strong></p>
-            <p>Reliable PDF generation with Gmail SMTP delivery</p>
+            <p>Professional single-column PDF with Tahoma font</p>
           </div>
         </body>
       </html>
@@ -309,14 +327,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // Send email via Gmail SMTP
-    console.log('Sending email with reliable PDF attachment...');
+    console.log('Sending email with single-column PDF attachment...');
     const emailInfo = await transporter.sendMail(mailOptions);
     
-    console.log('✅ Email sent successfully via Gmail SMTP with reliable PDF:', emailInfo.messageId);
+    console.log('✅ Email sent successfully via Gmail SMTP with proper PDF attachment:', emailInfo.messageId);
 
     res.status(200).json({
       success: true,
-      message: '✅ Form submitted successfully! Reliable PDF attachment sent directly to support@abba.works',
+      message: '✅ Form submitted successfully! Professional single-column PDF sent directly to support@abba.works',
       messageId: emailInfo.messageId,
       pdfFileName: fileName,
       timestamp: new Date().toISOString(),
