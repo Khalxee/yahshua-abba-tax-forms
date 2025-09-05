@@ -47,7 +47,7 @@ const generatePDF = (formData: FormData): Promise<Buffer> => {
       // Header
       doc.fontSize(20)
          .fillColor('#1e40af')
-         .text('🏛️ YAHSHUA-ABBA TAXPAYER FORM', { align: 'center' });
+         .text('YAHSHUA-ABBA TAXPAYER FORM', { align: 'center' });
       
       doc.fontSize(12)
          .fillColor('#666')
@@ -74,7 +74,7 @@ const generatePDF = (formData: FormData): Promise<Buffer> => {
       };
 
       // Form Information Section
-      addSection('📋 FORM INFORMATION', [
+      addSection('FORM INFORMATION', [
         ['BIR Form Number', formData.birFormNo],
         ['Revenue Period', formData.revenuePeriod],
         ['Tax ID Number', formData.taxIdentificationNumber],
@@ -83,7 +83,7 @@ const generatePDF = (formData: FormData): Promise<Buffer> => {
       ]);
 
       // Taxpayer Information Section
-      addSection('👤 TAXPAYER INFORMATION', [
+      addSection('TAXPAYER INFORMATION', [
         ['Taxpayer Name', formData.taxpayerName],
         ['Trade Name', formData.tradeName],
         ['Email Address', formData.emailAddress],
@@ -93,14 +93,14 @@ const generatePDF = (formData: FormData): Promise<Buffer> => {
       ]);
 
       // Business Information Section
-      addSection('📝 BUSINESS INFORMATION', [
+      addSection('BUSINESS INFORMATION', [
         ['Business Rating', formData.businessRating],
         ['Ownership Type', formData.ownershipType],
         ['Business in Good Standing', formData.businessInGood ? 'YES' : 'NO']
       ]);
 
       // Signatures & Authorization Section
-      addSection('✍️ SIGNATURES & AUTHORIZATION', [
+      addSection('SIGNATURES & AUTHORIZATION', [
         ['Taxpayer Signature', formData.taxpayerSignature],
         ['Authorized Representative', formData.authorizedRepSignature],
         ['Date Accomplished', formData.dateAccomplished]
@@ -110,7 +110,7 @@ const generatePDF = (formData: FormData): Promise<Buffer> => {
       doc.moveDown(2);
       doc.fontSize(8)
          .fillColor('#666')
-         .text('─'.repeat(80), { align: 'center' })
+         .text('================================================================================', { align: 'center' })
          .moveDown(0.5)
          .text('YAHSHUA-ABBA Tax Form System', { align: 'center' })
          .text(`Document ID: ${Date.now()}`, { align: 'center' })
@@ -215,12 +215,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         </head>
         <body>
           <div class="header">
-            <h1>🏛️ YAHSHUA-ABBA TAXPAYER FORM SUBMISSION</h1>
+            <h1>YAHSHUA-ABBA TAXPAYER FORM SUBMISSION</h1>
             <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
           </div>
 
           <div class="content">
-            <h3>📋 New Taxpayer Form Submission</h3>
+            <h3>New Taxpayer Form Submission</h3>
             
             <div class="info-item">
               <span class="info-label">Taxpayer:</span> ${formData.taxpayerName}
@@ -236,14 +236,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             </div>
             
             <p style="margin-top: 20px;">
-              📎 <strong>Complete form details are attached as a PDF document.</strong>
+              <strong>Complete form details are attached as a PDF document.</strong>
             </p>
             
             <p>This submission has been automatically processed and is ready for review.</p>
           </div>
 
           <div class="footer">
-            <p><strong>📧 YAHSHUA-ABBA Tax Form System</strong></p>
+            <p><strong>YAHSHUA-ABBA Tax Form System</strong></p>
             <p>Automated submission via Gmail SMTP with PDF attachment</p>
           </div>
         </body>
@@ -257,7 +257,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       from: `"YAHSHUA Tax Forms" <${gmailUser}>`,
       to: 'support@abba.works',
       cc: formData.emailAddress || undefined,
-      subject: `📋 Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
+      subject: `Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
       html: emailHtml,
       attachments: [
         {
