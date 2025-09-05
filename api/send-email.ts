@@ -24,13 +24,13 @@ interface FormData {
   revenueDeclarations?: Record<string, any>;
 }
 
-// Function to generate a professional form-style PDF using PDFKit
-const generateFormStylePDF = (formData: FormData): Promise<Buffer> => {
+// Simple, reliable PDF generation using PDFKit
+const generateReliablePDF = (formData: FormData): Promise<Buffer> => {
   return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({ 
         size: 'A4', 
-        margin: 40,
+        margin: 50,
         info: {
           Title: 'YAHSHUA-ABBA Taxpayer Form',
           Author: 'YAHSHUA-ABBA Tax System',
@@ -44,191 +44,107 @@ const generateFormStylePDF = (formData: FormData): Promise<Buffer> => {
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', reject);
 
-      // Colors and styling
-      const primaryColor = '#1e40af';
-      const fieldBgColor = '#f8fafc';
-      const borderColor = '#d1d5db';
-
-      // Helper function to draw a bordered field
-      const drawField = (x: number, y: number, width: number, height: number, label: string, value: string) => {
-        // Field border
-        doc.rect(x, y, width, height)
-           .fillAndStroke(fieldBgColor, borderColor);
-        
-        // Label
-        doc.fontSize(8)
-           .fillColor(primaryColor)
-           .text(label.toUpperCase(), x + 5, y + 3, { width: width - 10 });
-        
-        // Value
-        doc.fontSize(10)
-           .fillColor('#000')
-           .text(value || 'N/A', x + 5, y + 15, { width: width - 10, height: height - 20 });
-      };
-
-      // Helper function to draw section header
-      const drawSectionHeader = (x: number, y: number, width: number, title: string) => {
-        doc.rect(x, y, width, 25)
-           .fillAndStroke(primaryColor, primaryColor);
-        
-        doc.fontSize(12)
-           .fillColor('white')
-           .text(title.toUpperCase(), x + 10, y + 8, { width: width - 20 });
-        
-        return y + 25;
-      };
-
-      let currentY = 60;
-
       // Header
       doc.fontSize(18)
-         .fillColor(primaryColor)
+         .fillColor('#1e40af')
          .text('YAHSHUA-ABBA TAXPAYER FORM', { align: 'center' });
-
-      currentY += 30;
       
-      doc.fontSize(10)
+      doc.fontSize(12)
          .fillColor('#666')
          .text(`Submission Date: ${new Date().toLocaleString()}`, { align: 'center' })
-         .text('OFFICIAL SUBMISSION DOCUMENT', { align: 'center' });
+         .text('OFFICIAL SUBMISSION DOCUMENT', { align: 'center' })
+         .moveDown(2);
 
-      currentY += 40;
-
-      // Form Information Section
-      currentY = drawSectionHeader(40, currentY, 515, 'FORM INFORMATION');
-      currentY += 5;
-
-      // Two columns for form info
-      drawField(40, currentY, 255, 35, 'Revenue Period', formData.revenuePeriod);
-      drawField(300, currentY, 255, 35, 'Tax ID Number', formData.taxIdentificationNumber);
-      currentY += 40;
-
-      drawField(40, currentY, 255, 35, 'RDO Code', formData.rdoCode);
-      drawField(300, currentY, 255, 35, 'Line of Business', formData.lineOfBusiness);
-      currentY += 50;
-
-      // Taxpayer Information Section
-      currentY = drawSectionHeader(40, currentY, 515, 'TAXPAYER INFORMATION');
-      currentY += 5;
-
-      drawField(40, currentY, 255, 35, 'Taxpayer Name', formData.taxpayerName);
-      drawField(300, currentY, 255, 35, 'Trade Name', formData.tradeName);
-      currentY += 40;
-
-      drawField(40, currentY, 255, 35, 'Email Address', formData.emailAddress);
-      drawField(300, currentY, 255, 35, 'Phone/Fax Number', formData.telFaxNo);
-      currentY += 40;
-
-      drawField(40, currentY, 255, 35, 'Zip Code', formData.zipCode);
-      drawField(300, currentY, 255, 35, '', ''); // Empty field for spacing
-      currentY += 40;
-
-      // Full width address field
-      drawField(40, currentY, 515, 35, 'Registered Address', formData.registeredAddress);
-      currentY += 50;
-
-      // Business Information Section
-      currentY = drawSectionHeader(40, currentY, 515, 'BUSINESS INFORMATION');
-      currentY += 5;
-
-      drawField(40, currentY, 255, 35, 'Business Rating', formData.businessRating);
-      drawField(300, currentY, 255, 35, 'Ownership Type', formData.ownershipType);
-      currentY += 40;
-
-      // Business in Good Standing with checkbox style
-      doc.rect(40, currentY, 515, 35)
-         .fillAndStroke(fieldBgColor, borderColor);
-      
-      doc.fontSize(8)
-         .fillColor(primaryColor)
-         .text('BUSINESS IN GOOD STANDING', 45, currentY + 3);
-      
-      // Draw checkboxes
-      const checkboxY = currentY + 18;
-      
-      // YES checkbox
-      doc.rect(45, checkboxY, 12, 12)
-         .stroke(borderColor);
-      if (formData.businessInGood) {
+      // Helper function to add a field (one column layout)
+      const addField = (label: string, value: string | boolean) => {
+        const displayValue = typeof value === 'boolean' ? (value ? 'YES' : 'NO') : (value || 'N/A');
+        
         doc.fontSize(10)
-           .fillColor(primaryColor)
-           .text('✓', 47, checkboxY + 1);
-      }
-      doc.fontSize(10)
-         .fillColor('#000')
-         .text('YES', 65, checkboxY + 2);
-      
-      // NO checkbox
-      doc.rect(110, checkboxY, 12, 12)
-         .stroke(borderColor);
-      if (!formData.businessInGood) {
-        doc.fontSize(10)
-           .fillColor(primaryColor)
-           .text('✓', 112, checkboxY + 1);
-      }
-      doc.fontSize(10)
-         .fillColor('#000')
-         .text('NO', 130, checkboxY + 2);
+           .fillColor('#1e40af')
+           .text(label + ':', { continued: true, width: 150 })
+           .fillColor('#333')
+           .text(' ' + displayValue)
+           .moveDown(0.3);
+      };
 
-      currentY += 50;
+      // Helper function to add section header
+      const addSectionHeader = (title: string) => {
+        doc.moveDown(0.5);
+        doc.fontSize(12)
+           .fillColor('#1e40af')
+           .text(title, { underline: true })
+           .moveDown(0.5);
+      };
 
-      // Compliance Items (if present)
+      // FORM INFORMATION SECTION
+      addSectionHeader('FORM INFORMATION');
+      addField('Revenue Period', formData.revenuePeriod);
+      addField('Tax ID Number', formData.taxIdentificationNumber);
+      addField('RDO Code', formData.rdoCode);
+      addField('Line of Business', formData.lineOfBusiness);
+
+      // TAXPAYER INFORMATION SECTION  
+      addSectionHeader('TAXPAYER INFORMATION');
+      addField('Taxpayer Name', formData.taxpayerName);
+      addField('Trade Name', formData.tradeName);
+      addField('Email Address', formData.emailAddress);
+      addField('Phone/Fax Number', formData.telFaxNo);
+      addField('Registered Address', formData.registeredAddress);
+      addField('Zip Code', formData.zipCode);
+
+      // BUSINESS INFORMATION SECTION
+      addSectionHeader('BUSINESS INFORMATION');
+      addField('Business Rating', formData.businessRating);
+      addField('Ownership Type', formData.ownershipType);
+      addField('Business in Good Standing', formData.businessInGood); // Will show YES or NO
+
+      // COMPLIANCE ITEMS SECTION (if present)
       if (formData.complianceItems && Object.keys(formData.complianceItems).length > 0) {
-        currentY = drawSectionHeader(40, currentY, 515, 'COMPLIANCE ITEMS');
-        currentY += 5;
-
-        const complianceEntries = Object.entries(formData.complianceItems);
-        for (let i = 0; i < complianceEntries.length; i += 2) {
-          const [key1, value1] = complianceEntries[i];
-          const [key2, value2] = complianceEntries[i + 1] || ['', ''];
-          
-          const label1 = key1.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-          const label2 = key2 ? key2.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()) : '';
-          
-          drawField(40, currentY, 255, 35, label1, String(value1 || 'N/A'));
-          if (key2) {
-            drawField(300, currentY, 255, 35, label2, String(value2 || 'N/A'));
-          }
-          currentY += 40;
-        }
-        currentY += 10;
+        addSectionHeader('COMPLIANCE ITEMS');
+        Object.entries(formData.complianceItems).forEach(([key, value]) => {
+          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          addField(label, typeof value === 'boolean' ? (value ? 'YES' : 'NO') : value);
+        });
       }
 
-      // Revenue Declarations (if present)
+      // REVENUE DECLARATIONS SECTION (if present)
       if (formData.revenueDeclarations && Object.keys(formData.revenueDeclarations).length > 0) {
-        currentY = drawSectionHeader(40, currentY, 515, 'REVENUE DECLARATIONS');
-        currentY += 5;
-
-        const revenueEntries = Object.entries(formData.revenueDeclarations);
-        for (let i = 0; i < revenueEntries.length; i += 2) {
-          const [key1, value1] = revenueEntries[i];
-          const [key2, value2] = revenueEntries[i + 1] || ['', ''];
-          
-          const label1 = key1.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-          const label2 = key2 ? key2.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()) : '';
-          
-          drawField(40, currentY, 255, 35, label1, String(value1 || 'N/A'));
-          if (key2) {
-            drawField(300, currentY, 255, 35, label2, String(value2 || 'N/A'));
-          }
-          currentY += 40;
-        }
-        currentY += 10;
+        addSectionHeader('REVENUE DECLARATIONS');
+        Object.entries(formData.revenueDeclarations).forEach(([key, value]) => {
+          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          addField(label, typeof value === 'boolean' ? (value ? 'YES' : 'NO') : value);
+        });
       }
 
-      // Signatures & Authorization Section
-      currentY = drawSectionHeader(40, currentY, 515, 'SIGNATURES & AUTHORIZATION');
-      currentY += 5;
+      // SIGNATURES & AUTHORIZATION SECTION
+      addSectionHeader('SIGNATURES & AUTHORIZATION');
+      addField('Taxpayer Signature', formData.taxpayerSignature);
+      addField('Authorized Representative', formData.authorizedRepSignature);
+      addField('Date Accomplished', formData.dateAccomplished);
 
-      drawField(40, currentY, 255, 35, 'Taxpayer Signature', formData.taxpayerSignature);
-      drawField(300, currentY, 255, 35, 'Authorized Representative', formData.authorizedRepSignature);
-      currentY += 40;
+      // ADDITIONAL INFORMATION (catch any other fields)
+      const excludedFields = [
+        'taxpayerName', 'emailAddress', 'taxIdentificationNumber', 'registeredAddress', 
+        'telFaxNo', 'birFormNo', 'revenuePeriod', 'lineOfBusiness', 'rdoCode', 
+        'tradeName', 'zipCode', 'businessRating', 'ownershipType', 'businessInGood',
+        'taxpayerSignature', 'authorizedRepSignature', 'dateAccomplished',
+        'complianceItems', 'revenueDeclarations'
+      ];
 
-      // Full width date field
-      drawField(40, currentY, 515, 35, 'Date Accomplished', formData.dateAccomplished);
-      currentY += 50;
+      const additionalFields = Object.entries(formData).filter(([key, value]) => 
+        !excludedFields.includes(key) && value !== undefined && value !== null && value !== ''
+      );
+
+      if (additionalFields.length > 0) {
+        addSectionHeader('ADDITIONAL INFORMATION');
+        additionalFields.forEach(([key, value]) => {
+          const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          addField(label, typeof value === 'boolean' ? (value ? 'YES' : 'NO') : value);
+        });
+      }
 
       // Footer
+      doc.moveDown(3);
       doc.fontSize(8)
          .fillColor('#666')
          .text('================================================================================', { align: 'center' })
@@ -281,9 +197,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    // Generate form-style PDF
-    console.log('Generating professional form-style PDF...');
-    const pdfBuffer = await generateFormStylePDF(formData);
+    // Generate reliable PDF
+    console.log('Generating reliable PDF with single column layout...');
+    const pdfBuffer = await generateReliablePDF(formData);
     
     // Create professional email content
     const emailHtml = `
@@ -355,9 +271,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             <div class="info-item">
               <span class="info-label">Line of Business:</span> ${formData.lineOfBusiness || 'N/A'}
             </div>
+            <div class="info-item">
+              <span class="info-label">Business in Good Standing:</span> ${formData.businessInGood ? 'YES' : 'NO'}
+            </div>
             
             <p style="margin-top: 20px;">
-              <strong>Complete form details are attached as a professional PDF document.</strong>
+              <strong>Complete form details are attached as a PDF document.</strong>
             </p>
             
             <p>This submission has been automatically processed and is ready for review.</p>
@@ -365,7 +284,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           <div class="footer">
             <p><strong>YAHSHUA-ABBA Tax Form System</strong></p>
-            <p>Professional form-style PDF with Gmail SMTP delivery</p>
+            <p>Reliable PDF generation with Gmail SMTP delivery</p>
           </div>
         </body>
       </html>
@@ -390,14 +309,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // Send email via Gmail SMTP
-    console.log('Sending email with professional form-style PDF...');
+    console.log('Sending email with reliable PDF attachment...');
     const emailInfo = await transporter.sendMail(mailOptions);
     
-    console.log('✅ Email sent successfully via Gmail SMTP with form-style PDF:', emailInfo.messageId);
+    console.log('✅ Email sent successfully via Gmail SMTP with reliable PDF:', emailInfo.messageId);
 
     res.status(200).json({
       success: true,
-      message: '✅ Form submitted successfully! Professional form-style PDF sent directly to support@abba.works',
+      message: '✅ Form submitted successfully! Reliable PDF attachment sent directly to support@abba.works',
       messageId: emailInfo.messageId,
       pdfFileName: fileName,
       timestamp: new Date().toISOString(),
