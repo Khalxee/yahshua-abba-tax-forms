@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import nodemailer from 'nodemailer';
+import PDFDocument from 'pdfkit';
 
 interface FormData {
   taxpayerName: string;
@@ -23,372 +24,224 @@ interface FormData {
   revenueDeclarations?: Record<string, any>;
 }
 
-// Function to generate PDF from HTML using external API service
-const generatePDFFromHTML = async (formData: FormData): Promise<Buffer> => {
-  // Professional HTML template
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body { 
-            font-family: 'Arial', sans-serif; 
-            margin: 0; 
-            padding: 30px; 
-            line-height: 1.4; 
-            color: #333;
-            background: white;
-            font-size: 12px;
-          }
-          .header { 
-            text-align: center; 
-            margin-bottom: 30px; 
-            border-bottom: 3px solid #1e40af;
-            padding-bottom: 15px;
-          }
-          .header h1 { 
-            color: #1e40af; 
-            font-size: 24px; 
-            margin: 0 0 8px 0; 
-            font-weight: bold;
-          }
-          .header p { 
-            color: #666; 
-            margin: 3px 0; 
-            font-size: 11px;
-          }
-          .form-section { 
-            margin-bottom: 25px; 
-            page-break-inside: avoid;
-          }
-          .section-title { 
-            background-color: #1e40af; 
-            color: white; 
-            padding: 8px 15px; 
-            font-size: 13px; 
-            font-weight: bold; 
-            margin-bottom: 12px;
-            text-transform: uppercase;
-          }
-          .form-grid { 
-            display: table; 
-            width: 100%; 
-            border-collapse: collapse;
-          }
-          .form-row { 
-            display: table-row;
-          }
-          .form-field { 
-            display: table-cell;
-            border: 1px solid #ddd; 
-            padding: 8px; 
-            background: #fafafa;
-            width: 50%;
-            vertical-align: top;
-          }
-          .form-field.full-width { 
-            width: 100%;
-          }
-          .field-label { 
-            font-weight: bold; 
-            color: #1e40af; 
-            font-size: 10px; 
-            text-transform: uppercase;
-            display: block;
-            margin-bottom: 4px;
-          }
-          .field-value { 
-            color: #333; 
-            font-size: 11px;
-            min-height: 14px;
-            word-wrap: break-word;
-          }
-          .full-row {
-            display: table-row;
-          }
-          .full-row .form-field {
-            width: 100%;
-          }
-          .checkbox { 
-            display: inline-block; 
-            width: 12px; 
-            height: 12px; 
-            border: 1px solid #1e40af; 
-            margin-right: 6px;
-            text-align: center;
-            line-height: 10px;
-            font-weight: bold;
-            color: #1e40af;
-            font-size: 10px;
-          }
-          .footer { 
-            margin-top: 40px; 
-            text-align: center; 
-            border-top: 2px solid #1e40af; 
-            padding-top: 15px;
-            color: #666;
-            font-size: 10px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>YAHSHUA-ABBA TAXPAYER FORM</h1>
-          <p><strong>Submission Date:</strong> ${new Date().toLocaleString()}</p>
-          <p><strong>Document Status:</strong> OFFICIAL SUBMISSION</p>
-        </div>
+// Function to generate a professional form-style PDF using PDFKit
+const generateFormStylePDF = (formData: FormData): Promise<Buffer> => {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({ 
+        size: 'A4', 
+        margin: 40,
+        info: {
+          Title: 'YAHSHUA-ABBA Taxpayer Form',
+          Author: 'YAHSHUA-ABBA Tax System',
+          Subject: `Taxpayer Form - ${formData.taxpayerName}`,
+          Creator: 'YAHSHUA-ABBA Tax Form System'
+        }
+      });
 
-        <div class="form-section">
-          <div class="section-title">Form Information</div>
-          <div class="form-grid">
-            <div class="form-row">
-              <div class="form-field">
-                <span class="field-label">Revenue Period</span>
-                <div class="field-value">${formData.revenuePeriod || 'N/A'}</div>
-              </div>
-              <div class="form-field">
-                <span class="field-label">Tax ID Number</span>
-                <div class="field-value">${formData.taxIdentificationNumber || 'N/A'}</div>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-field">
-                <span class="field-label">RDO Code</span>
-                <div class="field-value">${formData.rdoCode || 'N/A'}</div>
-              </div>
-              <div class="form-field">
-                <span class="field-label">Line of Business</span>
-                <div class="field-value">${formData.lineOfBusiness || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      const buffers: Buffer[] = [];
+      doc.on('data', (buffer) => buffers.push(buffer));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', reject);
 
-        <div class="form-section">
-          <div class="section-title">Taxpayer Information</div>
-          <div class="form-grid">
-            <div class="form-row">
-              <div class="form-field">
-                <span class="field-label">Taxpayer Name</span>
-                <div class="field-value">${formData.taxpayerName || 'N/A'}</div>
-              </div>
-              <div class="form-field">
-                <span class="field-label">Trade Name</span>
-                <div class="field-value">${formData.tradeName || 'N/A'}</div>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-field">
-                <span class="field-label">Email Address</span>
-                <div class="field-value">${formData.emailAddress || 'N/A'}</div>
-              </div>
-              <div class="form-field">
-                <span class="field-label">Phone/Fax Number</span>
-                <div class="field-value">${formData.telFaxNo || 'N/A'}</div>
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-field">
-                <span class="field-label">Zip Code</span>
-                <div class="field-value">${formData.zipCode || 'N/A'}</div>
-              </div>
-              <div class="form-field">
-                <span class="field-label"></span>
-                <div class="field-value"></div>
-              </div>
-            </div>
-            <div class="full-row">
-              <div class="form-field full-width">
-                <span class="field-label">Registered Address</span>
-                <div class="field-value">${formData.registeredAddress || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      // Colors and styling
+      const primaryColor = '#1e40af';
+      const fieldBgColor = '#f8fafc';
+      const borderColor = '#d1d5db';
 
-        <div class="form-section">
-          <div class="section-title">Business Information</div>
-          <div class="form-grid">
-            <div class="form-row">
-              <div class="form-field">
-                <span class="field-label">Business Rating</span>
-                <div class="field-value">${formData.businessRating || 'N/A'}</div>
-              </div>
-              <div class="form-field">
-                <span class="field-label">Ownership Type</span>
-                <div class="field-value">${formData.ownershipType || 'N/A'}</div>
-              </div>
-            </div>
-            <div class="full-row">
-              <div class="form-field full-width">
-                <span class="field-label">Business in Good Standing</span>
-                <div class="field-value">
-                  <span class="checkbox">${formData.businessInGood ? '✓' : ''}</span> YES
-                  <span class="checkbox">${!formData.businessInGood ? '✓' : ''}</span> NO
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      // Helper function to draw a bordered field
+      const drawField = (x: number, y: number, width: number, height: number, label: string, value: string) => {
+        // Field border
+        doc.rect(x, y, width, height)
+           .fillAndStroke(fieldBgColor, borderColor);
+        
+        // Label
+        doc.fontSize(8)
+           .fillColor(primaryColor)
+           .text(label.toUpperCase(), x + 5, y + 3, { width: width - 10 });
+        
+        // Value
+        doc.fontSize(10)
+           .fillColor('#000')
+           .text(value || 'N/A', x + 5, y + 15, { width: width - 10, height: height - 20 });
+      };
 
-        ${formData.complianceItems && Object.keys(formData.complianceItems).length > 0 ? `
-        <div class="form-section">
-          <div class="section-title">Compliance Items</div>
-          <div class="form-grid">
-            ${Object.entries(formData.complianceItems).map(([key, value], index) => {
-              if (index % 2 === 0) {
-                const nextEntry = Object.entries(formData.complianceItems!)[index + 1];
-                return `
-                  <div class="form-row">
-                    <div class="form-field">
-                      <span class="field-label">${key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
-                      <div class="field-value">${value || 'N/A'}</div>
-                    </div>
-                    ${nextEntry ? `
-                      <div class="form-field">
-                        <span class="field-label">${nextEntry[0].replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
-                        <div class="field-value">${nextEntry[1] || 'N/A'}</div>
-                      </div>
-                    ` : '<div class="form-field"><span class="field-label"></span><div class="field-value"></div></div>'}
-                  </div>
-                `;
-              }
-              return '';
-            }).join('')}
-          </div>
-        </div>
-        ` : ''}
+      // Helper function to draw section header
+      const drawSectionHeader = (x: number, y: number, width: number, title: string) => {
+        doc.rect(x, y, width, 25)
+           .fillAndStroke(primaryColor, primaryColor);
+        
+        doc.fontSize(12)
+           .fillColor('white')
+           .text(title.toUpperCase(), x + 10, y + 8, { width: width - 20 });
+        
+        return y + 25;
+      };
 
-        <div class="form-section">
-          <div class="section-title">Signatures & Authorization</div>
-          <div class="form-grid">
-            <div class="form-row">
-              <div class="form-field">
-                <span class="field-label">Taxpayer Signature</span>
-                <div class="field-value">${formData.taxpayerSignature || 'N/A'}</div>
-              </div>
-              <div class="form-field">
-                <span class="field-label">Authorized Representative</span>
-                <div class="field-value">${formData.authorizedRepSignature || 'N/A'}</div>
-              </div>
-            </div>
-            <div class="full-row">
-              <div class="form-field full-width">
-                <span class="field-label">Date Accomplished</span>
-                <div class="field-value">${formData.dateAccomplished || 'N/A'}</div>
-              </div>
-            </div>
-          </div>
-        </div>
+      let currentY = 60;
 
-        <div class="footer">
-          <p><strong>YAHSHUA-ABBA Tax Form System</strong></p>
-          <p>Document ID: ${Date.now()} | Generated: ${new Date().toLocaleString()}</p>
-          <p>This is an official digital submission to support@abba.works</p>
-        </div>
-      </body>
-    </html>
-  `;
+      // Header
+      doc.fontSize(18)
+         .fillColor(primaryColor)
+         .text('YAHSHUA-ABBA TAXPAYER FORM', { align: 'center' });
 
-  try {
-    // Use HTMLCSStoImage API for reliable HTML to PDF conversion
-    const response = await fetch('https://hcti.io/v1/image', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${process.env.HCTI_USER_ID}:${process.env.HCTI_API_KEY}`).toString('base64')}`
-      },
-      body: JSON.stringify({
-        html: htmlContent,
-        css: '',
-        google_fonts: 'Arial',
-        viewport_width: 794,
-        viewport_height: 1123,
-        device_scale: 2,
-        format: 'pdf'
-      })
-    });
+      currentY += 30;
+      
+      doc.fontSize(10)
+         .fillColor('#666')
+         .text(`Submission Date: ${new Date().toLocaleString()}`, { align: 'center' })
+         .text('OFFICIAL SUBMISSION DOCUMENT', { align: 'center' });
 
-    if (!response.ok) {
-      throw new Error(`HTML-to-PDF API error: ${response.statusText}`);
+      currentY += 40;
+
+      // Form Information Section
+      currentY = drawSectionHeader(40, currentY, 515, 'FORM INFORMATION');
+      currentY += 5;
+
+      // Two columns for form info
+      drawField(40, currentY, 255, 35, 'Revenue Period', formData.revenuePeriod);
+      drawField(300, currentY, 255, 35, 'Tax ID Number', formData.taxIdentificationNumber);
+      currentY += 40;
+
+      drawField(40, currentY, 255, 35, 'RDO Code', formData.rdoCode);
+      drawField(300, currentY, 255, 35, 'Line of Business', formData.lineOfBusiness);
+      currentY += 50;
+
+      // Taxpayer Information Section
+      currentY = drawSectionHeader(40, currentY, 515, 'TAXPAYER INFORMATION');
+      currentY += 5;
+
+      drawField(40, currentY, 255, 35, 'Taxpayer Name', formData.taxpayerName);
+      drawField(300, currentY, 255, 35, 'Trade Name', formData.tradeName);
+      currentY += 40;
+
+      drawField(40, currentY, 255, 35, 'Email Address', formData.emailAddress);
+      drawField(300, currentY, 255, 35, 'Phone/Fax Number', formData.telFaxNo);
+      currentY += 40;
+
+      drawField(40, currentY, 255, 35, 'Zip Code', formData.zipCode);
+      drawField(300, currentY, 255, 35, '', ''); // Empty field for spacing
+      currentY += 40;
+
+      // Full width address field
+      drawField(40, currentY, 515, 35, 'Registered Address', formData.registeredAddress);
+      currentY += 50;
+
+      // Business Information Section
+      currentY = drawSectionHeader(40, currentY, 515, 'BUSINESS INFORMATION');
+      currentY += 5;
+
+      drawField(40, currentY, 255, 35, 'Business Rating', formData.businessRating);
+      drawField(300, currentY, 255, 35, 'Ownership Type', formData.ownershipType);
+      currentY += 40;
+
+      // Business in Good Standing with checkbox style
+      doc.rect(40, currentY, 515, 35)
+         .fillAndStroke(fieldBgColor, borderColor);
+      
+      doc.fontSize(8)
+         .fillColor(primaryColor)
+         .text('BUSINESS IN GOOD STANDING', 45, currentY + 3);
+      
+      // Draw checkboxes
+      const checkboxY = currentY + 18;
+      
+      // YES checkbox
+      doc.rect(45, checkboxY, 12, 12)
+         .stroke(borderColor);
+      if (formData.businessInGood) {
+        doc.fontSize(10)
+           .fillColor(primaryColor)
+           .text('✓', 47, checkboxY + 1);
+      }
+      doc.fontSize(10)
+         .fillColor('#000')
+         .text('YES', 65, checkboxY + 2);
+      
+      // NO checkbox
+      doc.rect(110, checkboxY, 12, 12)
+         .stroke(borderColor);
+      if (!formData.businessInGood) {
+        doc.fontSize(10)
+           .fillColor(primaryColor)
+           .text('✓', 112, checkboxY + 1);
+      }
+      doc.fontSize(10)
+         .fillColor('#000')
+         .text('NO', 130, checkboxY + 2);
+
+      currentY += 50;
+
+      // Compliance Items (if present)
+      if (formData.complianceItems && Object.keys(formData.complianceItems).length > 0) {
+        currentY = drawSectionHeader(40, currentY, 515, 'COMPLIANCE ITEMS');
+        currentY += 5;
+
+        const complianceEntries = Object.entries(formData.complianceItems);
+        for (let i = 0; i < complianceEntries.length; i += 2) {
+          const [key1, value1] = complianceEntries[i];
+          const [key2, value2] = complianceEntries[i + 1] || ['', ''];
+          
+          const label1 = key1.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          const label2 = key2 ? key2.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()) : '';
+          
+          drawField(40, currentY, 255, 35, label1, String(value1 || 'N/A'));
+          if (key2) {
+            drawField(300, currentY, 255, 35, label2, String(value2 || 'N/A'));
+          }
+          currentY += 40;
+        }
+        currentY += 10;
+      }
+
+      // Revenue Declarations (if present)
+      if (formData.revenueDeclarations && Object.keys(formData.revenueDeclarations).length > 0) {
+        currentY = drawSectionHeader(40, currentY, 515, 'REVENUE DECLARATIONS');
+        currentY += 5;
+
+        const revenueEntries = Object.entries(formData.revenueDeclarations);
+        for (let i = 0; i < revenueEntries.length; i += 2) {
+          const [key1, value1] = revenueEntries[i];
+          const [key2, value2] = revenueEntries[i + 1] || ['', ''];
+          
+          const label1 = key1.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          const label2 = key2 ? key2.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()) : '';
+          
+          drawField(40, currentY, 255, 35, label1, String(value1 || 'N/A'));
+          if (key2) {
+            drawField(300, currentY, 255, 35, label2, String(value2 || 'N/A'));
+          }
+          currentY += 40;
+        }
+        currentY += 10;
+      }
+
+      // Signatures & Authorization Section
+      currentY = drawSectionHeader(40, currentY, 515, 'SIGNATURES & AUTHORIZATION');
+      currentY += 5;
+
+      drawField(40, currentY, 255, 35, 'Taxpayer Signature', formData.taxpayerSignature);
+      drawField(300, currentY, 255, 35, 'Authorized Representative', formData.authorizedRepSignature);
+      currentY += 40;
+
+      // Full width date field
+      drawField(40, currentY, 515, 35, 'Date Accomplished', formData.dateAccomplished);
+      currentY += 50;
+
+      // Footer
+      doc.fontSize(8)
+         .fillColor('#666')
+         .text('================================================================================', { align: 'center' })
+         .moveDown(0.5)
+         .text('YAHSHUA-ABBA Tax Form System', { align: 'center' })
+         .text(`Document ID: ${Date.now()}`, { align: 'center' })
+         .text('This is an official digital submission to support@abba.works', { align: 'center' });
+
+      doc.end();
+    } catch (error) {
+      reject(error);
     }
-
-    const result = await response.json();
-    
-    if (!result.url) {
-      throw new Error('No PDF URL returned from HTML-to-PDF service');
-    }
-
-    // Download the generated PDF
-    const pdfResponse = await fetch(result.url);
-    
-    if (!pdfResponse.ok) {
-      throw new Error(`Failed to download PDF: ${pdfResponse.statusText}`);
-    }
-
-    const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
-    return pdfBuffer;
-
-  } catch (error) {
-    console.error('HTML-to-PDF API error, falling back to simple text PDF');
-    
-    // Fallback: Create a simple but well-formatted text PDF
-    const simpleHtml = `
-      <html>
-        <head>
-          <style>
-            body { font-family: Arial; padding: 40px; }
-            h1 { color: #1e40af; text-align: center; border-bottom: 2px solid #1e40af; padding-bottom: 10px; }
-            .section { margin: 20px 0; }
-            .section h3 { background: #1e40af; color: white; padding: 8px; margin: 0 0 10px 0; }
-            .field { margin: 5px 0; padding: 5px; border: 1px solid #ddd; }
-            .label { font-weight: bold; color: #1e40af; }
-          </style>
-        </head>
-        <body>
-          <h1>YAHSHUA-ABBA TAXPAYER FORM</h1>
-          <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
-          
-          <div class="section">
-            <h3>Form Information</h3>
-            <div class="field"><span class="label">Revenue Period:</span> ${formData.revenuePeriod || 'N/A'}</div>
-            <div class="field"><span class="label">Tax ID Number:</span> ${formData.taxIdentificationNumber || 'N/A'}</div>
-            <div class="field"><span class="label">RDO Code:</span> ${formData.rdoCode || 'N/A'}</div>
-            <div class="field"><span class="label">Line of Business:</span> ${formData.lineOfBusiness || 'N/A'}</div>
-          </div>
-          
-          <div class="section">
-            <h3>Taxpayer Information</h3>
-            <div class="field"><span class="label">Taxpayer Name:</span> ${formData.taxpayerName || 'N/A'}</div>
-            <div class="field"><span class="label">Trade Name:</span> ${formData.tradeName || 'N/A'}</div>
-            <div class="field"><span class="label">Email:</span> ${formData.emailAddress || 'N/A'}</div>
-            <div class="field"><span class="label">Phone/Fax:</span> ${formData.telFaxNo || 'N/A'}</div>
-            <div class="field"><span class="label">Address:</span> ${formData.registeredAddress || 'N/A'}</div>
-            <div class="field"><span class="label">Zip Code:</span> ${formData.zipCode || 'N/A'}</div>
-          </div>
-          
-          <div class="section">
-            <h3>Business Information</h3>
-            <div class="field"><span class="label">Business Rating:</span> ${formData.businessRating || 'N/A'}</div>
-            <div class="field"><span class="label">Ownership Type:</span> ${formData.ownershipType || 'N/A'}</div>
-            <div class="field"><span class="label">Business in Good Standing:</span> ${formData.businessInGood ? 'YES' : 'NO'}</div>
-          </div>
-          
-          <div class="section">
-            <h3>Signatures</h3>
-            <div class="field"><span class="label">Taxpayer Signature:</span> ${formData.taxpayerSignature || 'N/A'}</div>
-            <div class="field"><span class="label">Authorized Rep:</span> ${formData.authorizedRepSignature || 'N/A'}</div>
-            <div class="field"><span class="label">Date Accomplished:</span> ${formData.dateAccomplished || 'N/A'}</div>
-          </div>
-        </body>
-      </html>
-    `;
-
-    // Return the HTML as text for now - still better than plain text
-    return Buffer.from(simpleHtml);
-  }
+  });
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -428,9 +281,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    // Generate PDF from HTML
-    console.log('Generating professional PDF from HTML...');
-    const pdfBuffer = await generatePDFFromHTML(formData);
+    // Generate form-style PDF
+    console.log('Generating professional form-style PDF...');
+    const pdfBuffer = await generateFormStylePDF(formData);
     
     // Create professional email content
     const emailHtml = `
@@ -512,7 +365,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
           <div class="footer">
             <p><strong>YAHSHUA-ABBA Tax Form System</strong></p>
-            <p>Professional form generation with Gmail SMTP delivery</p>
+            <p>Professional form-style PDF with Gmail SMTP delivery</p>
           </div>
         </body>
       </html>
@@ -537,21 +390,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     };
 
     // Send email via Gmail SMTP
-    console.log('Sending email with professional form attachment...');
+    console.log('Sending email with professional form-style PDF...');
     const emailInfo = await transporter.sendMail(mailOptions);
     
-    console.log('✅ Email sent successfully via Gmail SMTP with professional form attachment:', emailInfo.messageId);
+    console.log('✅ Email sent successfully via Gmail SMTP with form-style PDF:', emailInfo.messageId);
 
     res.status(200).json({
       success: true,
-      message: '✅ Form submitted successfully! Professional form attachment sent directly to support@abba.works',
+      message: '✅ Form submitted successfully! Professional form-style PDF sent directly to support@abba.works',
       messageId: emailInfo.messageId,
       pdfFileName: fileName,
       timestamp: new Date().toISOString(),
     });
 
   } catch (error: any) {
-    console.error('❌ Gmail SMTP or form generation error:', error);
+    console.error('❌ Gmail SMTP or PDF generation error:', error);
     
     res.status(500).json({
       success: false,
