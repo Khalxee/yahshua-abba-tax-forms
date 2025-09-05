@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import nodemailer from 'nodemailer';
 
 interface FormData {
   taxpayerName: string;
@@ -42,12 +43,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const formData: FormData = req.body;
     console.log('Processing form submission for:', formData.taxpayerName);
 
-    // Get Resend API key from environment variable
-    const resendApiKey = process.env.RESEND_API_KEY;
+    // Get Gmail credentials from environment variables
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
     
-    if (!resendApiKey) {
-      throw new Error('RESEND_API_KEY not configured in Vercel environment variables');
+    if (!gmailUser || !gmailAppPassword) {
+      throw new Error('Gmail credentials not configured. Please set GMAIL_USER and GMAIL_APP_PASSWORD in Vercel environment variables.');
     }
+
+    // Create Gmail SMTP transporter
+    const transporter = nodemailer.createTransporter({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword
+      }
+    });
 
     // Create professional email content
     const emailHtml = `
@@ -109,7 +120,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           <div class="header">
             <h1>🏛️ YAHSHUA-ABBA TAXPAYER FORM SUBMISSION</h1>
             <p><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
-            <p><strong>Status:</strong> ✅ AUTOMATICALLY PROCESSED</p>
+            <p><strong>Status:</strong> ✅ DELIVERED VIA GMAIL SMTP</p>
           </div>
 
           <div class="section">
@@ -146,57 +157,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           </div>
 
           <div class="footer">
-            <p><strong>📧 This email was sent automatically by the YAHSHUA-ABBA Tax Form System</strong></p>
-            <p>Powered by Vercel Functions + Resend API</p>
+            <p><strong>📧 This email was sent automatically via Gmail SMTP</strong></p>
+            <p>YAHSHUA-ABBA Tax Form System | Powered by Gmail + Nodemailer</p>
           </div>
         </body>
       </html>
     `;
 
-    // Send email with YAHSHUA Compliance branding to verified address
-    const emailResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'YAHSHUA Compliance <onboarding@resend.dev>',
-        to: ['yahshua.babidabb@gmail.com'], // Only verified address that works
-        subject: `📋 FORWARD TO: support@abba.works - Taxpayer Form - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
-        html: emailHtml + `
-          <div style="background-color: #dcfce7; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0;">
-            <h4 style="color: #15803d; margin-top: 0;">📧 ACTION: Forward to support@abba.works</h4>
-            <p><strong>Please forward this email to: support@abba.works</strong></p>
-            <p><strong>From YAHSHUA Compliance:</strong> yahshua.compliance@gmail.com</p>
-            <p><em>Reply-to is set to yahshua.compliance@gmail.com for direct responses</em></p>
-          </div>
-        `,
-        reply_to: 'yahshua.compliance@gmail.com'
-      }),
-    });
+    // Email configuration
+    const mailOptions = {
+      from: `"YAHSHUA Tax Forms" <${gmailUser}>`,
+      to: 'support@abba.works',
+      cc: formData.emailAddress || undefined,
+      replyTo: 'yahshua.compliance@gmail.com',
+      subject: `📋 Taxpayer Form Submission - ${formData.taxpayerName} (${formData.taxIdentificationNumber || 'No Tax ID'})`,
+      html: emailHtml
+    };
 
-    const emailResult = await emailResponse.json();
-
-    if (!emailResponse.ok) {
-      throw new Error(`Resend API error: ${emailResult.message || 'Unknown error'}`);
-    }
-
-    console.log('✅ Email sent successfully:', emailResult.id);
+    // Send email via Gmail SMTP
+    const emailInfo = await transporter.sendMail(mailOptions);
+    
+    console.log('✅ Email sent successfully via Gmail SMTP:', emailInfo.messageId);
 
     res.status(200).json({
       success: true,
-      message: '✅ Form submitted successfully! Email sent from YAHSHUA Compliance - please forward to support@abba.works',
-      emailId: emailResult.id,
+      message: '✅ Form submitted successfully! Email sent directly to support@abba.works via Gmail SMTP',
+      messageId: emailInfo.messageId,
       timestamp: new Date().toISOString(),
     });
 
   } catch (error: any) {
-    console.error('❌ Email submission error:', error);
+    console.error('❌ Gmail SMTP error:', error);
     
     res.status(500).json({
       success: false,
-      error: `Failed to send email: ${error.message}`,
+      error: `Failed to send email via Gmail SMTP: ${error.message}`,
     });
   }
 }
